@@ -1,0 +1,197 @@
+﻿<html lang="html5">
+<head>
+
+    <meta charset="UTF-8"/>
+    <title>Тепловая карта</title>
+
+    <link href="https://yandex.st/bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style type="text/css">
+        html, body, .hero-unit {
+            min-height: 100%;
+            height: 100%;
+            margin: 0px;
+        }
+
+        #YMapsID {
+            width: 900px;
+            height: 500px;
+        }
+
+        #YMapsCode {
+            width: 880px;
+        }
+    </style>
+
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru-RU" type="text/javascript"></script>
+    <script src="http://yandex.github.io/mapsapi-heatmap/Heatmap.min.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        dataURL = "v1/bo/supermarket";
+
+        requestData = function (url) {
+            // 1. Создаём новый объект XMLHttpRequest
+            var xhr = new XMLHttpRequest();
+
+            // 2. Конфигурируем его: GET-запрос на URL 'phones.json'
+            xhr.open('GET', url, false);
+
+            // 3. Отсылаем запрос
+            xhr.send();
+
+            // 4. Если код ответа сервера не 200, то это ошибка
+            if (xhr.status != 200) {
+                // обработать ошибку
+                alert(xhr.status + ': ' + xhr.statusText); // пример вывода: 404: Not Found
+                return null;
+            } else {
+                // вывести результат
+                var result = xhr.responseText;
+                // alert( result ); // responseText -- текст ответа.
+                return result;
+            }
+        };
+        // если успех, парсим данные
+        jsonStr = requestData(dataURL);
+        if (jsonStr) {
+            dataJSON = JSON.parse(jsonStr);
+            arrData = [];
+            for (var i = 0; i < dataJSON.length; i++) {
+                var entity = dataJSON[i];
+                var _geometry = {type: "Point", coordinates: [entity["lat"], entity["lon"]]};
+                var _properties = {weight: entity["weight"]};
+                var _id = "id" + (i + 1);
+                var object = {id: _id, type: "Feature", geometry: _geometry, properties: _properties};
+                arrData.push(object);
+            }
+            data = {type: "FeatureCollection", features: arrData};
+            console.log(dataJSON);
+            console.log(data);
+        }
+
+        ymaps.ready(function () {
+            var map = new ymaps.Map('YMapsID', {
+                    center: [59.939095, 30.315868],
+                    controls: ['zoomControl', 'typeSelector', 'fullscreenControl'],
+                    zoom: 14, type: 'yandex#satellite'
+                }),
+
+                buttons = {
+                    dissipating: new ymaps.control.Button({
+                        data: {
+                            content: 'Toggle dissipating'
+                        },
+                        options: {
+                            selectOnClick: false,
+                            maxWidth: 150
+                        }
+                    }),
+                    opacity: new ymaps.control.Button({
+                        data: {
+                            content: 'Change opacity'
+                        },
+                        options: {
+                            selectOnClick: false,
+                            maxWidth: 150
+                        }
+                    }),
+                    radius: new ymaps.control.Button({
+                        data: {
+                            content: 'Change radius'
+                        },
+                        options: {
+                            selectOnClick: false,
+                            maxWidth: 150
+                        }
+                    }),
+                    gradient: new ymaps.control.Button({
+                        data: {
+                            content: 'Reverse gradient'
+                        },
+                        options: {
+                            selectOnClick: false,
+                            maxWidth: 150
+                        }
+                    }),
+                    heatmap: new ymaps.control.Button({
+                        data: {
+                            content: 'Toggle Heatmap'
+                        },
+                        options: {
+                            selectOnClick: false,
+                            maxWidth: 150
+                        }
+                    })
+                },
+
+                gradients = [{
+                    0.1: 'rgba(128, 255, 0, 0.7)',
+                    0.2: 'rgba(255, 255, 0, 0.8)',
+                    0.7: 'rgba(234, 72, 58, 0.9)',
+                    1.0: 'rgba(162, 36, 25, 1)'
+                }, {
+                    0.1: 'rgba(162, 36, 25, 0.7)',
+                    0.2: 'rgba(234, 72, 58, 0.8)',
+                    0.7: 'rgba(255, 255, 0, 0.9)',
+                    1.0: 'rgba(128, 255, 0, 1)'
+                }],
+                radiuses = [5, 10, 20, 30],
+                opacities = [0.4, 0.6, 0.8, 1];
+
+            ymaps.modules.require(['Heatmap'], function (Heatmap) {
+                var heatmap = new Heatmap(data, {
+                    gradient: gradients[0],
+                    radius: radiuses[1],
+                    opacity: opacities[2]
+                });
+                heatmap.setMap(map);
+
+                buttons.dissipating.events.add('press', function () {
+                    heatmap.options.set(
+                        'dissipating', !heatmap.options.get('dissipating')
+                    );
+                });
+                buttons.opacity.events.add('press', function () {
+                    var current = heatmap.options.get('opacity'),
+                        index = opacities.indexOf(current);
+                    heatmap.options.set(
+                        'opacity', opacities[++index == opacities.length ? 0 : index]
+                    );
+                });
+                buttons.radius.events.add('press', function () {
+                    var current = heatmap.options.get('radius'),
+                        index = radiuses.indexOf(current);
+                    heatmap.options.set(
+                        'radius', radiuses[++index == radiuses.length ? 0 : index]
+                    );
+                });
+                buttons.gradient.events.add('press', function () {
+                    var current = heatmap.options.get('gradient');
+                    heatmap.options.set(
+                        'gradient', current == gradients[0] ? gradients[1] : gradients[0]
+                    );
+                });
+                buttons.heatmap.events.add('press', function () {
+                    heatmap.setMap(
+                        heatmap.getMap() ? null : map
+                    );
+                });
+
+                for (var key in buttons) {
+                    if (buttons.hasOwnProperty(key)) {
+                        map.controls.add(buttons[key]);
+                    }
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+<div class="hero-unit">
+    <div class="container">
+        <p>Yandex Maps API <a href="https://github.com/yandex/mapsapi-heatmap">Heatmap Module</a></p>
+        <div id="YMapsID"></div>
+    </div>
+</div>
+</body>
+
+</html>
