@@ -8,3 +8,5 @@
 - Станции метро
 
 **Основные использованные технологии:** Spring Boot, Hibernate, PostgreSQL, Tomcat, Maven.
+
+![alt text](https://raw.githubusercontent.com/0xFaulty/AdvertisingService/master/screenshots/preview.png)
